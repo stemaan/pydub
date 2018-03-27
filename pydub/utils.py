@@ -13,6 +13,11 @@ try:
 except ImportError:
     import pyaudioop as audioop
 
+try:
+    from pathlib import Path
+    path_types = (str, Path)
+except ImportError:
+    path_types = (str,)
 
 if sys.version_info >= (3, 0):
     basestring = str
@@ -55,7 +60,7 @@ def _fd_or_path_or_tempfile(fd, mode='w+b', tempfile=True):
     if fd is None and tempfile:
         fd = TemporaryFile(mode=mode)
 
-    if isinstance(fd, basestring):
+    if isinstance(fd, path_types):
         fd = open(fd, mode=mode)
 
     return fd

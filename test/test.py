@@ -1,11 +1,13 @@
 from functools import partial
 import os
 import sys
+import io
 import unittest
 from tempfile import (
         NamedTemporaryFile,
         mkdtemp,
-        gettempdir
+        gettempdir,
+        TemporaryFile,
 )
 import tempfile
 import struct
@@ -17,6 +19,7 @@ from pydub.utils import (
     make_chunks,
     mediainfo,
     get_encoder_name,
+    _fd_or_path_or_tempfile,
 )
 from pydub.exceptions import (
     InvalidTag,
@@ -37,6 +40,12 @@ from pydub.generators import (
     WhiteNoise,
 )
 
+
+if sys.version_info >= (3, 0):
+    file_type = io.BufferedRandom
+else:
+    file_type = file
+
 data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
 
@@ -54,6 +63,41 @@ class UtilityTests(unittest.TestCase):
         self.assertEqual(3, db_to_float(ratio_to_db(3, using_amplitude=False), using_amplitude=False))
         self.assertEqual(12, ratio_to_db(db_to_float(12, using_amplitude=False), using_amplitude=False))
 
+    def test_fd_or_path_or_tempfile_returns_file_descriptor(self):
+        fd = None
+        rv = _fd_or_path_or_tempfile(fd)
+
+        self.assertIsInstance(rv, file_type)
+        rv.close()
+
+    def test_fd_or_path_or_tempfile_returns_the_same_file_descriptor(self):
+        fd = TemporaryFile()
+        rv = _fd_or_path_or_tempfile(fd)
+
+        self.assertIs(fd, rv)
+        self.assertIsInstance(rv, file_type)
+        rv.close()
+
+    def test_fd_or_path_or_tempfile_returns_file_descriptor_for_str_path(self):
+        path = os.path.join(data_dir, 'test1.mp3')
+        rv = _fd_or_path_or_tempfile(path)
+
+        self.assertIsInstance(rv, file_type)
+        rv.close()
+
+    def test_fd_or_path_or_tempfile_returns_file_descriptor_for_path(self):
+        # silencig exception is really bad here but test mustn't fail
+        # if python version is lower that 3.x
+        try:
+            from pathlib import Path
+        except ImportError:
+            pass
+        else:
+            path = Path(__file__).parent.absolute() / data_dir / 'test1.mp3'
+            rv = _fd_or_path_or_tempfile(path)
+
+            self.assertIsInstance(rv, file_type)
+            rv.close()
 
 class FileAccessTests(unittest.TestCase):
 
